@@ -2,7 +2,7 @@ import socket
 import math
 import logging
 import time
-
+import multiprocessing as mp
 import numpy as np
 import cv2
 from ultralytics import YOLO
@@ -28,6 +28,13 @@ class Server:
         self.server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.server_socket.bind((host, port))
         self.server_socket.listen(1)
+        self.ctx = mp.get_context('spawn')
+        self.frames_queue = self.ctx.Queue()
+        self.results_queue = self.ctx.Queue()
+        self.detect_process = self.ctx.Process(target=detection, args=(self.frames_queue, self.results_queue))
+        self.detect_process.start()
+        self.frame_processed = False
+        self.boxes = list()
         logger.info(f"Сервер запущен на {host}:{port}")
         print(f"Сервер запущен на {host}:{port}")
 
@@ -75,7 +82,34 @@ class Server:
 
                 # Обработка кадра
                 logger.debug("Обработка кадра...")
-                self.detect_people(img)
+                if not self.frame_processed:
+                    self.frames_queue.put(img)
+                    self.frame_processed = True
+                if not self.results_queue.empty():
+                    self.frame_processed = False
+                    self.boxes = self.results_queue.get()
+                for (x1, y1, x2, y2) in self.boxes:
+                    # put box in cam
+                    cv2.rectangle(img, (x1, y1), (x2, y2), (255, 0, 255), 3)
+
+                    # confidence
+                    # confidence = math.ceil((box.conf[0] * 100)) / 100
+                    # print("Confidence --->", confidence)
+                    #
+                    # # class name
+                    # cls = int(box.cls[0])
+                    # print("Class name -->", classNames[cls])
+
+                    # object details
+                    org = [x1, y1]
+                    font = cv2.FONT_HERSHEY_SIMPLEX
+                    fontScale = 1
+                    color = (255, 0, 0)
+                    thickness = 2
+
+                    cv2.putText(img, 'person', org, font, fontScale, color, thickness)
+
+                # self.detect_people(img)
 
                 if img is not None:
                     cv2.imshow("Received Image", img)
@@ -87,48 +121,58 @@ class Server:
             except Exception as e:
                 logger.error(f"Ошибка при обработке данных от клиента: {e}")
                 print(f"Ошибка при обработке данных от клиента: {e}")
+                self.detect_process.join()
                 break
 
+        self.detect_process.join()
         client_socket.close()
         logger.info("Соединение с клиентом закрыто.")
         print("Соединение с клиентом закрыто.")
         cv2.destroyAllWindows()  # Закрываем все окна после разрыва соединения
 
-    def detect_people(self, img):
-        results = model(img)
-        for r in results:
-            boxes = r.boxes
+def detection(frames_queue, results_queue):
+    while True:
+        if not frames_queue.empty():
+            frame = frames_queue.get()
+            boxes = detect_people(frame)
+            results_queue.put(boxes)
 
-            for box in boxes:
-                cls = int(box.cls[0])
-                if classNames[cls] == "person":
-                    x1, y1, x2, y2 = box.xyxy[0]
-                    x1, y1, x2, y2 = int(x1), int(y1), int(x2), int(y2)
-
-                    cv2.rectangle(img, (x1, y1), (x2, y2), (255, 0, 255), 3)
-
-                    confidence = math.ceil((box.conf[0] * 100)) / 100
-                    logger.debug(f"Confidence ---> {confidence}")
-                    print(f"Confidence ---> {confidence}")
-
-                    cls = int(box.cls[0])
-                    logger.debug(f"Class name --> {classNames[cls]}")
-                    print(f"Class name --> {classNames[cls]}")
-
-                    org = [x1, y1]
-                    font = cv2.FONT_HERSHEY_SIMPLEX
-                    fontScale = 1
-                    color = (255, 0, 0)
-                    thickness = 2
-
-                    cv2.putText(img,
-                                classNames[cls],
-                                org,
-                                font,
-                                fontScale,
-                                color,
-                                thickness
-                                )
+def detect_people(img):
+    boxes_ = list()
+    results = model(img)
+    for r in results:
+        boxes = r.boxes
+        for box in boxes:
+            cls = int(box.cls[0])
+            if classNames[cls] == "person":
+                x1, y1, x2, y2 = box.xyxy[0]
+                x1, y1, x2, y2 = int(x1), int(y1), int(x2), int(y2)
+                boxes_.append((x1, y1, x2, y2))
+    return boxes_
+                # cv2.rectangle(img, (x1, y1), (x2, y2), (255, 0, 255), 3)
+                #
+                # confidence = math.ceil((box.conf[0] * 100)) / 100
+                # logger.debug(f"Confidence ---> {confidence}")
+                # print(f"Confidence ---> {confidence}")
+                #
+                # cls = int(box.cls[0])
+                # logger.debug(f"Class name --> {classNames[cls]}")
+                # print(f"Class name --> {classNames[cls]}")
+                #
+                # org = [x1, y1]
+                # font = cv2.FONT_HERSHEY_SIMPLEX
+                # fontScale = 1
+                # color = (255, 0, 0)
+                # thickness = 2
+                #
+                # cv2.putText(img,
+                #             classNames[cls],
+                #             org,
+                #             font,
+                #             fontScale,
+                #             color,
+                #             thickness
+                #             )
 
 
 if __name__ == '__main__':
