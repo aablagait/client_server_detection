@@ -1,0 +1,127 @@
+import socket
+import numpy as np
+import cv2
+from ultralytics import YOLO
+import math
+import logging
+import time
+
+from classes import classNames
+
+# Настройка логирования в файл
+logging.basicConfig(
+    filename='server_log.log',  # Имя файла для логов
+    filemode='a',  # Режим записи: 'a' для добавления, 'w' для перезаписи
+    level=logging.DEBUG,  # Уровень логирования
+    format='%(asctime)s - %(levelname)s - %(message)s'  # Формат логов
+)
+
+logger = logging.getLogger(__name__)
+
+model = YOLO("yolo-Weights/yolov8n.pt")
+
+
+class Server:
+    def __init__(self, host='localhost', port=8080):
+        self.server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        self.server_socket.bind((host, port))
+        self.server_socket.listen(1)
+        logger.info(f"Сервер запущен на {host}:{port}")
+        print(f"Сервер запущен на {host}:{port}")
+
+    def run(self):
+        while True:
+            try:
+                client_socket, addr = self.server_socket.accept()
+                logger.info(f"Подключен клиент: {addr}")
+                print(f"Подключен клиент: {addr}")
+                cv2.destroyAllWindows()  # Закрываем все окна перед новым подключением
+                self.handle_client(client_socket)
+            except Exception as e:
+                logger.error(f"Ошибка при подключении клиента: {e}")
+                print(f"Ошибка при подключении клиента: {e}")
+
+    def handle_client(self, client_socket):
+        while True:
+            try:
+                # Получаем размер изображения
+                data = client_socket.recv(4)
+                if not data:
+                    logger.warning("Соединение с клиентом разорвано.")
+                    print("Соединение с клиентом разорвано.")
+                    break
+
+                img_size = int.from_bytes(data, byteorder='big')
+
+                # Получаем само изображение
+                img_data = b''
+                while len(img_data) < img_size:
+                    packet = client_socket.recv(img_size - len(img_data))
+                    if not packet:
+                        logger.warning("Соединение с клиентом разорвано.")
+                        print("Соединение с клиентом разорвано.")
+                        break
+                    img_data += packet
+
+                # Логируем время получения изображения
+                receive_time = time.time()
+                logger.info(f"Изображение получено в: {receive_time:.6f} секунд")
+
+                # Преобразуем байты в изображение
+                img_array = np.frombuffer(img_data, dtype=np.uint8)
+                img = cv2.imdecode(img_array, cv2.IMREAD_COLOR)
+
+                # Обработка кадра
+                logger.debug("Обработка кадра...")
+                self.detect_people(img)
+
+                if img is not None:
+                    cv2.imshow("Received Image", img)
+                    cv2.waitKey(1)
+
+                # Отправляем подтверждение клиенту
+                client_socket.sendall(b'ACK')
+
+            except Exception as e:
+                logger.error(f"Ошибка при обработке данных от клиента: {e}")
+                print(f"Ошибка при обработке данных от клиента: {e}")
+                break
+
+        client_socket.close()
+        logger.info("Соединение с клиентом закрыто.")
+        print("Соединение с клиентом закрыто.")
+        cv2.destroyAllWindows()  # Закрываем все окна после разрыва соединения
+
+    def detect_people(self, img):
+        results = model(img)
+        for r in results:
+            boxes = r.boxes
+
+            for box in boxes:
+                cls = int(box.cls[0])
+                if classNames[cls] == "person":
+                    x1, y1, x2, y2 = box.xyxy[0]
+                    x1, y1, x2, y2 = int(x1), int(y1), int(x2), int(y2)
+
+                    cv2.rectangle(img, (x1, y1), (x2, y2), (255, 0, 255), 3)
+
+                    confidence = math.ceil((box.conf[0] * 100)) / 100
+                    logger.debug(f"Confidence ---> {confidence}")
+                    print(f"Confidence ---> {confidence}")
+
+                    cls = int(box.cls[0])
+                    logger.debug(f"Class name --> {classNames[cls]}")
+                    print(f"Class name --> {classNames[cls]}")
+
+                    org = [x1, y1]
+                    font = cv2.FONT_HERSHEY_SIMPLEX
+                    fontScale = 1
+                    color = (255, 0, 0)
+                    thickness = 2
+
+                    cv2.putText(img, classNames[cls], org, font, fontScale, color, thickness)
+
+
+if __name__ == '__main__':
+    server = Server()
+    server.run()
