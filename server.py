@@ -1,12 +1,14 @@
 import socket
-import numpy as np
-import cv2
-from ultralytics import YOLO
 import math
 import logging
 import time
 
+import numpy as np
+import cv2
+from ultralytics import YOLO
+
 from classes import classNames
+
 
 # Настройка логирования в файл
 logging.basicConfig(
@@ -35,7 +37,6 @@ class Server:
                 client_socket, addr = self.server_socket.accept()
                 logger.info(f"Подключен клиент: {addr}")
                 print(f"Подключен клиент: {addr}")
-                cv2.destroyAllWindows()  # Закрываем все окна перед новым подключением
                 self.handle_client(client_socket)
             except Exception as e:
                 logger.error(f"Ошибка при подключении клиента: {e}")
@@ -65,7 +66,8 @@ class Server:
 
                 # Логируем время получения изображения
                 receive_time = time.time()
-                logger.info(f"Изображение получено в: {receive_time:.6f} секунд")
+                logger.info(f"Изображение получено в: "
+                            f"{receive_time:.6f} секунд")
 
                 # Преобразуем байты в изображение
                 img_array = np.frombuffer(img_data, dtype=np.uint8)
@@ -119,7 +121,14 @@ class Server:
                     color = (255, 0, 0)
                     thickness = 2
 
-                    cv2.putText(img, classNames[cls], org, font, fontScale, color, thickness)
+                    cv2.putText(img,
+                                classNames[cls],
+                                org,
+                                font,
+                                fontScale,
+                                color,
+                                thickness
+                                )
 
 
 if __name__ == '__main__':

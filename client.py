@@ -1,8 +1,9 @@
 import socket
-import cv2
-import numpy as np
 import logging
 import time
+
+import cv2
+
 
 # Настройка логирования в файл
 logging.basicConfig(
@@ -60,6 +61,3 @@ class Client:
 if __name__ == '__main__':
     client = Client()
     client.send_image()
-
-
-
