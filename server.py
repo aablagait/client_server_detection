@@ -5,8 +5,9 @@ import time
 import multiprocessing as mp
 import numpy as np
 import cv2
+import os
 from ultralytics import YOLO
-
+from dotenv import load_dotenv
 from classes import classNames
 
 
@@ -176,5 +177,7 @@ def detect_people(img):
 
 
 if __name__ == '__main__':
-    server = Server()
+    host = os.getenv('CONNECT_CLIENT_HOST')
+    port = os.getenv('CONNECT_CLIENT_PORT')
+    server = Server(host=host, port=port)
     server.run()

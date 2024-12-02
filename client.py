@@ -1,9 +1,11 @@
 import socket
 import logging
 import time
-
+import os
 import cv2
+from dotenv import load_dotenv
 
+load_dotenv()
 
 # Настройка логирования в файл
 logging.basicConfig(
@@ -59,5 +61,7 @@ class Client:
 
 
 if __name__ == '__main__':
-    client = Client()
+    host = os.getenv('CONNECT_SERVER_HOST')
+    port = os.getenv('CONNECT_SERVER_PORT')
+    client = Client(host=host, port=port)
     client.send_image()
