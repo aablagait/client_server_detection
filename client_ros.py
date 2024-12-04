@@ -6,10 +6,11 @@ import os
 from sensor_msgs.msg import Image
 from cv_bridge import CvBridge
 from clover import long_callback
-from cv2 import long_callback
-from dotenv import load_dotenv
+import cv2
+# from cv2 import long_callback
+# from dotenv import load_dotenv
 
-load_dotenv()
+# load_dotenv()
 
 # Настройка логирования в файл
 logging.basicConfig(
@@ -18,8 +19,10 @@ logging.basicConfig(
     level=logging.DEBUG,
     format='%(asctime)s - %(levelname)s - %(message)s'
 )
-host = os.getenv('CONNECT_SERVER_HOST')
-port = os.getenv('CONNECT_SERVER_PORT')
+# host = os.getenv('CONNECT_SERVER_HOST')
+# port = os.getenv('CONNECT_SERVER_PORT')
+host = '192.168.1.35'
+port = 8080
 client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 client_socket.connect((host, port))
 logger = logging.getLogger(__name__)

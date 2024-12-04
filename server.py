@@ -11,6 +11,8 @@ from dotenv import load_dotenv
 from classes import classNames
 
 
+load_dotenv()
+
 # Настройка логирования в файл
 logging.basicConfig(
     filename='server_log.log',  # Имя файла для логов
@@ -25,7 +27,7 @@ model = YOLO("yolo-Weights/yolov8n.pt")
 
 
 class Server:
-    def __init__(self, host='localhost', port=8080):
+    def __init__(self, host='0.0.0.0', port=8080):
         self.server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.server_socket.bind((host, port))
         self.server_socket.listen(1)
@@ -93,14 +95,6 @@ class Server:
                     # put box in cam
                     cv2.rectangle(img, (x1, y1), (x2, y2), (255, 0, 255), 3)
 
-                    # confidence
-                    # confidence = math.ceil((box.conf[0] * 100)) / 100
-                    # print("Confidence --->", confidence)
-                    #
-                    # # class name
-                    # cls = int(box.cls[0])
-                    # print("Class name -->", classNames[cls])
-
                     # object details
                     org = [x1, y1]
                     font = cv2.FONT_HERSHEY_SIMPLEX
@@ -150,34 +144,11 @@ def detect_people(img):
                 x1, y1, x2, y2 = int(x1), int(y1), int(x2), int(y2)
                 boxes_.append((x1, y1, x2, y2))
     return boxes_
-                # cv2.rectangle(img, (x1, y1), (x2, y2), (255, 0, 255), 3)
-                #
-                # confidence = math.ceil((box.conf[0] * 100)) / 100
-                # logger.debug(f"Confidence ---> {confidence}")
-                # print(f"Confidence ---> {confidence}")
-                #
-                # cls = int(box.cls[0])
-                # logger.debug(f"Class name --> {classNames[cls]}")
-                # print(f"Class name --> {classNames[cls]}")
-                #
-                # org = [x1, y1]
-                # font = cv2.FONT_HERSHEY_SIMPLEX
-                # fontScale = 1
-                # color = (255, 0, 0)
-                # thickness = 2
-                #
-                # cv2.putText(img,
-                #             classNames[cls],
-                #             org,
-                #             font,
-                #             fontScale,
-                #             color,
-                #             thickness
-                #             )
 
 
 if __name__ == '__main__':
     host = os.getenv('CONNECT_CLIENT_HOST')
     port = os.getenv('CONNECT_CLIENT_PORT')
-    server = Server(host=host, port=port)
+    # server = Server(host=host, port=port)
+    server = Server()
     server.run()
