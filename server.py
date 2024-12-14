@@ -3,11 +3,13 @@ import math
 import logging
 import time
 import multiprocessing as mp
+import os
+
 import numpy as np
 import cv2
-import os
 from ultralytics import YOLO
 from dotenv import load_dotenv
+
 from classes import classNames
 
 
@@ -20,8 +22,8 @@ logging.basicConfig(
     level=logging.DEBUG,  # Уровень логирования
     format='%(asctime)s - %(levelname)s - %(message)s'  # Формат логов
 )
-
 logger = logging.getLogger(__name__)
+
 
 model = YOLO("yolo-Weights/yolov8n.pt")
 
@@ -125,12 +127,14 @@ class Server:
         print("Соединение с клиентом закрыто.")
         cv2.destroyAllWindows()  # Закрываем все окна после разрыва соединения
 
+
 def detection(frames_queue, results_queue):
     while True:
         if not frames_queue.empty():
             frame = frames_queue.get()
             boxes = detect_people(frame)
             results_queue.put(boxes)
+
 
 def detect_people(img):
     boxes_ = list()
